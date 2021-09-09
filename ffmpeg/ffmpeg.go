@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/floostack/transcoder"
-	"github.com/floostack/transcoder/utils"
+	"github.com/wolfhong/transcoder"
+	"github.com/wolfhong/transcoder/utils"
 )
 
 // Transcoder ...
@@ -38,7 +38,7 @@ func New(cfg *Config) transcoder.Transcoder {
 }
 
 // Start ...
-func (t *Transcoder) Start(opts transcoder.Options) (<-chan transcoder.Progress, error) {
+func (t *Transcoder) Start(opts transcoder.Options) (<-chan transcoder.Progress, *os.Process, error) {
 
 	var stderrIn io.ReadCloser
 
@@ -48,13 +48,13 @@ func (t *Transcoder) Start(opts transcoder.Options) (<-chan transcoder.Progress,
 
 	// Validates config
 	if err := t.validate(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Get file metadata
 	_, err := t.GetMetadata()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Append input file and standard options
@@ -98,7 +98,7 @@ func (t *Transcoder) Start(opts transcoder.Options) (<-chan transcoder.Progress,
 	if t.config.ProgressEnabled && !t.config.Verbose {
 		stderrIn, err = cmd.StderrPipe()
 		if err != nil {
-			return nil, fmt.Errorf("Failed getting transcoding progress (%s) with args (%s) with error %s", t.config.FfmpegBinPath, args, err)
+			return nil, nil, fmt.Errorf("Failed getting transcoding progress (%s) with args (%s) with error %s", t.config.FfmpegBinPath, args, err)
 		}
 	}
 
@@ -109,7 +109,7 @@ func (t *Transcoder) Start(opts transcoder.Options) (<-chan transcoder.Progress,
 	// Start process
 	err = cmd.Start()
 	if err != nil {
-		return nil, fmt.Errorf("Failed starting transcoding (%s) with args (%s) with error %s", t.config.FfmpegBinPath, args, err)
+		return nil, nil, fmt.Errorf("Failed starting transcoding (%s) with args (%s) with error %s", t.config.FfmpegBinPath, args, err)
 	}
 
 	if t.config.ProgressEnabled && !t.config.Verbose {
@@ -125,7 +125,7 @@ func (t *Transcoder) Start(opts transcoder.Options) (<-chan transcoder.Progress,
 		err = cmd.Wait()
 	}
 
-	return out, nil
+	return out, cmd.Process, nil
 }
 
 // Input ...
