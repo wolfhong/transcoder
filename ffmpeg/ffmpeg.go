@@ -38,7 +38,7 @@ func New(cfg *Config) transcoder.Transcoder {
 }
 
 // Start ...
-func (t *Transcoder) Start(opts transcoder.Options) (<-chan transcoder.Progress, *os.Process, error) {
+func (t *Transcoder) Start(opts transcoder.Options, mode string) (<-chan transcoder.Progress, *os.Process, error) {
 
 	var stderrIn io.ReadCloser
 
@@ -58,7 +58,12 @@ func (t *Transcoder) Start(opts transcoder.Options) (<-chan transcoder.Progress,
 	}
 
 	// Append input file and standard options
-	args := append([]string{"-i", t.input}, opts.GetStrArguments()...)
+	var args []string
+	if mode == "gpu" {
+		args = append([]string{"-vsync", "0", "-hwaccel", "cuvid", "-hwaccel_output_format", "cuda", "-i", t.input}, opts.GetStrArguments()...)
+	} else {
+		args = append([]string{"-i", t.input}, opts.GetStrArguments()...)
+	}
 	outputLength := len(t.output)
 	optionsLength := len(t.options)
 
@@ -92,6 +97,10 @@ func (t *Transcoder) Start(opts transcoder.Options) (<-chan transcoder.Progress,
 		cmd = exec.Command(t.config.FfmpegBinPath, args...)
 	} else {
 		cmd = exec.CommandContext(*t.commandContext, t.config.FfmpegBinPath, args...)
+	}
+
+	if mode != "" {
+		fmt.Printf("ffmpeg command (%s) is: %s\n", mode, cmd.String())
 	}
 
 	// If progresss enabled, get stderr pipe and start progress process
